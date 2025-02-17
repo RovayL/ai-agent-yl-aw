@@ -48,6 +48,15 @@ async def on_message(message: discord.Message):
     # Don't delete this line! It's necessary for the bot to process commands.
     await bot.process_commands(message)
 
+    # Ignore messages from self or other bots.
+    if (
+        message.author == bot.user
+        or message.author.bot
+        or message.content.startswith("!")
+        or not message.content.startswith("Bob, please build me")
+    ):
+        return
+
     # Ignore messages from self or other bots to prevent infinite loops.
     if message.author.bot or message.content.startswith("!"):
         return
