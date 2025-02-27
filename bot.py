@@ -1,6 +1,8 @@
 import os
 import discord
 import logging
+import asyncio
+import time
 
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -101,6 +103,48 @@ def partition_string(text, max_chunk_size=1995):
 
     return partitions
 
+async def generate_and_show_image(message: discord.Message, prompt: str):
+    """ 
+    Uses agent to generate an image. Waits until the image is ready. Then renders it in the channel.
+
+    Args:
+        message (discord.Message): The message that initiated the image generation
+        prompt (str): The text prompt for image generation
+
+    Returns:
+        None
+    """
+    # Send initial response
+    status_message = await message.reply(f"Starting image generation for: '{prompt}'...")
+
+    # Start the image generation process
+    generation_result = await agent.generate_image(prompt)
+
+    if 'error' in generation_result:
+        await status_message.edit(content=f"Error starting image generation: {generation_result['error']}")
+        return
+
+    generation_id = generation_result['id']
+    await status_message.edit(content=f"Image generation in progress (ID: {generation_id})...")
+
+    start_time = time.time()
+    max_wait_time = 30 
+
+    while time.time() - start_time < max_wait_time:
+        status_result, status_code = await agent.check_image_status(generation_id)
+        print(f"Status check result: {status_result}")
+        if status_result.get('status', '') == 'Ready':
+            embed = discord.Embed(title="Generated Image")
+            embed.set_image(url=status_result['result']['sample'])
+            await message.channel.send(embed=embed)
+            await status_message.edit(content=f"Image generation complete!")
+            return
+
+        await asyncio.sleep(1)
+
+    await status_message.edit(content="Image generation timed out. Please try again later.")
+    return
+
 @bot.event
 async def on_ready():
     """
@@ -127,8 +171,18 @@ async def on_message(message: discord.Message):
         message.author == bot.user
         or message.author.bot
         or message.content.startswith("!")
-        or not message.content.startswith("Bob, please build me")
+        or not (message.content.startswith("Bob, please build me") or message.content.startswith("Make me a picture"))
     ):
+        return
+    
+    # TODO: Improve the logic/interface of when to generate an image. Probably want to integrate with Bob, so its
+    # not just when someone asks "Make me a picture"
+    if message.content.startswith("Make me a picture"):
+        # Extract the prompt from the message
+        prompt = message.content.replace("Make me a picture", "").strip()
+        if not prompt:
+            prompt = "A beautiful landscape"  # Default prompt if none provided
+        await generate_and_show_image(message, prompt)
         return
 
     # Ignore messages from self or other bots to prevent infinite loops.

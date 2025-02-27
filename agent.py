@@ -1,8 +1,11 @@
 import os
 from mistralai import Mistral
 import discord
+import aiohttp
+import json
 
 MISTRAL_MODEL = "mistral-large-latest"
+BFL_MODEL = 'flux-pro-1.1'
 
 VERIFY_REASONABLE_REQUEST = """
 Is this message a reasonable request for building something? The message must both be an actual
@@ -101,3 +104,69 @@ class BuilderAgent:
         # print("MISTRAL RESPONSE:", instruction)
 
         return instruction
+
+    async def _start_generation(self, prompt, width=1024, height=1024):
+        print(f"Starting image generation with prompt: '{prompt}'")
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"https://api.us1.bfl.ai/v1/{BFL_MODEL}",
+                headers={
+                    'Content-Type': 'application/json',
+                    'accept': 'application/json',
+                    'x-key': os.environ.get('BFL_API_KEY'),
+                },
+                json={
+                    'prompt': prompt,
+                    'width': width,
+                    'height': height,
+                }
+            ) as response:
+                response_text = await response.text()
+                data = json.loads(response_text)
+                print(f"Response data: {json.dumps(data, indent=2)}")
+                
+                generation_id = data.get('id')
+                if generation_id:
+                    return {'id': generation_id}, 200
+                else:
+                    return {'error': f'Failed to find generation ID in response: {data}'}, 400
+
+    async def generate_image(self, prompt, width=1024, height=1024):
+        """
+        Initiates an image generation request using the BFL API.
+        
+        Args:
+            prompt (str): The text prompt for image generation
+            width (int): Width of the image in pixels (default: 1024)
+            height (int): Height of the image in pixels (default: 1024)
+            
+        Returns:
+            dict: Response containing the generation ID or error message
+        """
+
+        # POST request to start image generation
+ 
+        # Start the generation process
+        result, _ = await self._start_generation(prompt)
+        return result
+    
+    async def check_image_status(self, generation_id):
+        """
+        Checks the status of a previously initiated image generation.
+        
+        Args:
+            generation_id (str): The ID of the generation to check
+            
+        Returns:
+            dict: Response containing the generation status and result if available
+        """
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f'https://api.us1.bfl.ai/v1/get_result?id={generation_id}',
+                headers={
+                    'accept': 'application/json',
+                    'x-key': os.environ.get('BFL_API_KEY'),
+                }
+            ) as response:
+                data = await response.json()
+                return data, 200
