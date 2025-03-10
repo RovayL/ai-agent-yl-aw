@@ -275,7 +275,7 @@ async def on_message(message: discord.Message):
         message.author == bot.user
         or message.author.bot
         or message.content.startswith("!")
-        or not (message.content.startswith("Bob, please build me") or message.content.startswith("Make me a picture")
+        or not (message.content.startswith("Bob, please build") or message.content.startswith("Make me a picture")
                 or message.content.startswith("Bob, please explain") or message.content.startswith("Bob, please elaborate"))
         # or not (message.content.startswith("Bob, please explain") or message.content.startswith("Bob, please elaborate"))
     ):

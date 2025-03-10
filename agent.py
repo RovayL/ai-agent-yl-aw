@@ -85,38 +85,59 @@ Remember: You are an expert maker who knows exactly how to build these items. Ma
 """
 
 IMAGE_STEP_PROMPT = """
-You are BuilderBot, a highly skilled maker and DIY expert with extensive knowledge of building and crafting various items. You have practical experience in woodworking, basic electronics, home improvement, and general crafting.
-You know how to build furniture like tables and chairs, as well as assemble and repair computers and other electronic devices that can be made or fixed at home.
+Create a technical illustration in the exact style of IKEA furniture assembly manuals for the following construction step. The illustration must follow these strict guidelines:
 
-During the building process, a customer wants a graphic of a construction step to assist their build. 
+1. VISUAL STYLE:
+   - Use a minimalist, clean line drawing style with simple black outlines on a white background
+   - Include ONLY the components and tools relevant to this specific step
+   - Use isometric or flat 2D perspective consistent with furniture manuals
+   - NO text labels - communicate visually only
 
-A step below will be encased in <<  and  >>
+2. CONTENT FOCUS:
+   - Show ONLY the physical objects and actions being described
+   - Include a simple hand or generic human figure outline (no faces or detailed bodies) ONLY when demonstrating a specific action
+   - Highlight connection points and assembly details with dotted lines or arrows
 
-Your job is to produce a highly detailed graphic that appears to have come out of an IKEA manual, and demonstrates how to perform the step. That is:
- -> The background should be white/cream
- -> The objects in the step should be mosty black and white (few colors), and should definitely have black linework
- -> Any units/measurements should be in bright red. Try to incorporate units/measurements such as lengths close to their associated objects so that the user can better understand the proportions
- -> There should be a stick figure of a person attempting to do the actions described in the step
+3. MEASUREMENTS:
+   - Show critical measurements as simple red dimension lines with numbers
+   - Use small red arrows to indicate direction of movement or force
 
-The step to be elaborated on now comes after this text, encased in pointy brackets
+4. WHAT NOT TO INCLUDE:
+   - NO cartoon characters or robot assistants
+   - NO speech bubbles or explanatory text
+   - NO backgrounds, settings, or decorative elements
+   - NO BuilderBot character or references to it
+
+The construction step to illustrate is enclosed between << and >>:
 """
 
 
 IMAGE_ELABORATION_PROMPT = """
-You are BuilderBot, a highly skilled maker and DIY expert with extensive knowledge of building and crafting various items. You have practical experience in woodworking, basic electronics, home improvement, and general crafting.
-You know how to build furniture like tables and chairs, as well as assemble and repair computers and other electronic devices that can be made or fixed at home.
+Create a technical illustration in the exact style of IKEA furniture assembly manuals for the following elaborated construction step. The illustration must follow these strict guidelines:
 
-During the building process, a customer wants a graphic of an elaborated construction step to assist their build. 
+1. VISUAL STYLE:
+   - Use a minimalist, clean line drawing style with simple black outlines on a white background
+   - Include ONLY the components and tools relevant to this specific step
+   - Use isometric or flat 2D perspective consistent with furniture manuals
+   - NO text labels - communicate visually only
 
-The elaborated instructions will be encased in <<  and  >>
+2. CONTENT FOCUS:
+   - Show ONLY the physical objects and actions being described
+   - Include a simple hand or generic human figure outline (no faces or detailed bodies) ONLY when demonstrating a specific action
+   - Highlight connection points and assembly details with dotted lines or arrows
+   - For elaborated steps, include a sequence of 2-3 small illustrations showing the progression of the action if needed
 
-Your job is to produce a highly detailed graphic that appears to have come out of an IKEA manual, and demonstrates how to perform the elaborated instructions. That is:
- -> The background should be white/cream
- -> The objects in the step should be mosty black and white (few colors), and should definitely have black linework
- -> Any units/measurements should be in bright red. Try to incorporate units/measurements such as lengths close to their associated objects so that the user can better understand the proportions
- -> There should be a stick figure of a person attempting to do the actions described in the step
+3. MEASUREMENTS:
+   - Show critical measurements as simple red dimension lines with numbers
+   - Use small red arrows to indicate direction of movement or force
 
-The step to be elaborated on now comes after this text, encased in pointy brackets
+4. WHAT NOT TO INCLUDE:
+   - NO cartoon characters or robot assistants
+   - NO speech bubbles or explanatory text
+   - NO backgrounds, settings, or decorative elements
+   - NO BuilderBot character or references to it
+
+The elaborated construction step to illustrate is enclosed between << and >>:
 """
 
 
