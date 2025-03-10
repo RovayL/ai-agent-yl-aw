@@ -275,8 +275,9 @@ async def on_message(message: discord.Message):
         message.author == bot.user
         or message.author.bot
         or message.content.startswith("!")
-        or not (message.content.startswith("Bob, please build me") or message.content.startswith("Make me a picture")
-                or message.content.startswith("Bob, please explain") or message.content.startswith("Bob, please elaborate"))
+        or not (message.content.startswith("Bob, please build") or message.content.startswith("Make me a picture")
+                or message.content.startswith("Bob, please explain") or message.content.startswith("Bob, please elaborate")
+                or message.content.startswith("Bob, estimate costs") or message.content.startswith("Bob, please estimate costs"))
         # or not (message.content.startswith("Bob, please explain") or message.content.startswith("Bob, please elaborate"))
     ):
         return
@@ -374,9 +375,104 @@ async def on_message(message: discord.Message):
                 await generate_elaboration_image(message, response)
 
                 return
+
+        # Check for cost estimation requests for the most recent build
+        requesting_cost_estimate = r"Bob, (please |)estimate costs.*?step (\d+).*?(prev|past|last)"
+        matches = re.findall(requesting_cost_estimate, message.content, re.IGNORECASE)
+        if matches:
+            # Extract the step we are looking for
+            step_ID = int(matches[0][1])
+            print(f"Cost estimate requested for step {step_ID}")
+
+            # Do bounds checks
+            if step_ID < 1 or step_ID > len(message_history[(head_index + MAX_HISTORY_LEN - 1) % MAX_HISTORY_LEN]) : 
+                print("Error, the step seems to be too big or small, make sure it is in range of the listed steps")
+                await message.reply("Error, the step seems to be too big or small, make sure it is in range of the listed steps")
+                return
+            
+            # Obtain a cost estimate response
+            response = await agent.estimate_costs(message, step_ID, 1, message_history[(head_index + MAX_HISTORY_LEN - 1) % MAX_HISTORY_LEN])
+
+            # Process response, bold units and dimensions
+            processed_response = bold_units_and_dimensions(response)
+            
+            # Send the cost estimate as a reply
+            partitioned_text = partition_string(processed_response)
+            for partition in partitioned_text:
+                await message.reply(partition)
+            
+            return
+        else:
+            # We might be looking for a cost estimate for a build further back in time
+            requesting_cost_estimate = r"Bob, (please |)estimate costs.*?step (\d+).*?(\d+) (iteration|sequence|build)"
+            matches = re.findall(requesting_cost_estimate, message.content, re.IGNORECASE)
+            if matches:
+                # Get the step number and build index
+                step_ID, build_past_iter = int(matches[0][1]), int(matches[0][2])
+                build_index = (head_index + MAX_HISTORY_LEN - build_past_iter) % MAX_HISTORY_LEN
+
+                # Check the build index actually exists and we are not too far back in time
+                if build_index not in message_history or build_past_iter > MAX_HISTORY_LEN :
+                    print(f"You are requesting a build that is not in recent memory, you can at most request {MAX_HISTORY_LEN} builds ago")
+                    await message.reply(f"You are requesting a build that is not in recent memory, you can at most request {MAX_HISTORY_LEN} builds ago")
+                    return
                 
+                # Do bounds checks
+                if step_ID < 1 or step_ID > len(message_history[build_index]) : 
+                    print("Error, the step seems to be too big or small, make sure it is in range of the listed steps")
+                    await message.reply("Error, the step seems to be too big or small, make sure it is in range of the listed steps")
+                    return
                 
+                # Obtain a cost estimate response
+                response = await agent.estimate_costs(message, step_ID, build_past_iter, message_history[build_index])
+
+                # Process response, bold units and dimensions
+                processed_response = bold_units_and_dimensions(response)
                 
+                # Send the cost estimate as a reply
+                partitioned_text = partition_string(processed_response)
+                for partition in partitioned_text:
+                    await message.reply(partition)
+                
+                return
+        
+        # Check for cost estimation for all materials in the most recent build
+        requesting_full_cost_estimate = r"Bob, (please |)estimate (total |all |)costs.*?(prev|past|last)"
+        matches = re.findall(requesting_full_cost_estimate, message.content, re.IGNORECASE)
+        if matches:
+            # Get all steps from the most recent build
+            all_steps = message_history[(head_index + MAX_HISTORY_LEN - 1) % MAX_HISTORY_LEN]
+            if not all_steps:
+                await message.reply("No recent build found to estimate costs for.")
+                return
+                
+            # Combine all steps into one string for the materials section
+            combined_steps = "\n".join(all_steps)
+            
+            # Get the materials section from the combined steps
+            materials_section = ""
+            if "Materials:" in combined_steps:
+                materials_section = combined_steps.split("Materials:")[1].split("Tools:")[0]
+            
+            if not materials_section:
+                await message.reply("Could not find materials section in the build.")
+                return
+                
+            # Format the materials section for cost estimation
+            formatted_materials = f"Materials:\n{materials_section}"
+            
+            # Obtain a cost estimate response for all materials
+            response = await agent.get_cost_estimate(message, formatted_materials, combined_steps)
+            
+            # Process response, bold units and dimensions
+            processed_response = bold_units_and_dimensions(response)
+            
+            # Send the cost estimate as a reply
+            partitioned_text = partition_string(processed_response)
+            for partition in partitioned_text:
+                await message.reply(partition)
+                
+            return
 
         # return [int(match[1]) for match in matches]
 
