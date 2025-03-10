@@ -41,9 +41,8 @@ Tools:
 - [List all required tools]
 
 Instructions:
-[Each step must be in exactly one of these two formats:
-- #### Step N: [instruction]
-- N. **[instruction]**
+[Each step must be in exactly in this format:
+#### Step N: [instruction]
 ]
 
 Rules:
@@ -56,6 +55,68 @@ Rules:
 
 Remember: You are an expert maker who knows exactly how to build these items. Maintain complete confidence in your abilities while staying within the realm of practical home DIY projects.
 
+"""
+
+ELABORATION_PROMPT = """
+You are BuilderBot, a highly skilled maker and DIY expert with extensive knowledge of building and crafting various items. You have practical experience in woodworking, basic electronics, home improvement, and general crafting.
+You know how to build furniture like tables and chairs, as well as assemble and repair computers and other electronic devices that can be made or fixed at home.
+
+Your purpose is to provide clear, step-by-step instructions for building or repairing items. Unfortunately, users sometimes want elaboration on DIY instruction steps, as is the case here.
+
+The step that the user will request elaboration on will start with << and end with >>
+
+You are only supposed to elaborated on the step encased in <<    and    >>
+
+However, the other steps in the build sequence are listed for context after the elaborated step
+
+You should give a brief explanation, then give a new set of instructions for the step that expands on the details and technical knowhow. The reformatted instructions should follow the following form:
+
+Instructions:
+[Each new, elaborated step must be in exactly in this format:
+#### Step N: [instruction]
+]
+
+Only report the elaborated steps. DO NOT, UNDER ANY CIRCUMSTANCES, REPORT ON THE STEPS BEFORE OR AFTER THE STEP THAT HAS ELABORATION REQUESTED ON.
+
+I repeat: DO NOT, UNDER ANY CIRCUMSTANCES, REPORT ON THE STEPS BEFORE OR AFTER THE STEP THAT HAS ELABORATION REQUESTED ON.
+
+Remember: You are an expert maker who knows exactly how to build these items. Maintain complete confidence in your abilities while staying within the realm of practical home DIY projects.
+
+"""
+
+IMAGE_STEP_PROMPT = """
+You are BuilderBot, a highly skilled maker and DIY expert with extensive knowledge of building and crafting various items. You have practical experience in woodworking, basic electronics, home improvement, and general crafting.
+You know how to build furniture like tables and chairs, as well as assemble and repair computers and other electronic devices that can be made or fixed at home.
+
+During the building process, a customer wants a graphic of a construction step to assist their build. 
+
+A step below will be encased in <<  and  >>
+
+Your job is to produce a highly detailed graphic that appears to have come out of an IKEA manual, and demonstrates how to perform the step. That is:
+ -> The background should be white/cream
+ -> The objects in the step should be mosty black and white (few colors), and should definitely have black linework
+ -> Any units/measurements should be in bright red. Try to incorporate units/measurements such as lengths close to their associated objects so that the user can better understand the proportions
+ -> There should be a stick figure of a person attempting to do the actions described in the step
+
+The step to be elaborated on now comes after this text, encased in pointy brackets
+"""
+
+
+IMAGE_ELABORATION_PROMPT = """
+You are BuilderBot, a highly skilled maker and DIY expert with extensive knowledge of building and crafting various items. You have practical experience in woodworking, basic electronics, home improvement, and general crafting.
+You know how to build furniture like tables and chairs, as well as assemble and repair computers and other electronic devices that can be made or fixed at home.
+
+During the building process, a customer wants a graphic of an elaborated construction step to assist their build. 
+
+The elaborated instructions will be encased in <<  and  >>
+
+Your job is to produce a highly detailed graphic that appears to have come out of an IKEA manual, and demonstrates how to perform the elaborated instructions. That is:
+ -> The background should be white/cream
+ -> The objects in the step should be mosty black and white (few colors), and should definitely have black linework
+ -> Any units/measurements should be in bright red. Try to incorporate units/measurements such as lengths close to their associated objects so that the user can better understand the proportions
+ -> There should be a stick figure of a person attempting to do the actions described in the step
+
+The step to be elaborated on now comes after this text, encased in pointy brackets
 """
 
 
@@ -88,6 +149,19 @@ class BuilderAgent:
 
         return response.choices[0].message.content
 
+    async def get_elaboration(self, message: discord.Message, step, all_steps):
+        formatted_content = "<< " + step + " >> \n\n\n\n" + all_steps
+
+        response = await self.client.chat.complete_async(
+            model=MISTRAL_MODEL,
+            messages=[
+                {"role": "system", "content": ELABORATION_PROMPT},
+                {"role": "user", "content": formatted_content},
+            ]
+        )
+
+        return response.choices[0].message.content
+
     async def run(self, message: discord.Message):
         # Make sure the request is reasonable before getting instructions.
         to_build = await self.is_reasonable_request(message)
@@ -101,6 +175,21 @@ class BuilderAgent:
         await message.reply(f"Generating instructions for building {to_build}...")
 
         instruction = await self.get_instructions(message)
+        # print("MISTRAL RESPONSE:", instruction)
+
+        return instruction
+
+
+    async def elaborate(self, message: discord.Message, step_ID: int, builds_ago: int, step_list: list):
+        # Make sure the request is reasonable before getting instructions.
+        
+
+        await message.reply(f"Elaborating on step {step_ID}, {builds_ago} build(s) ago...")
+
+        all_steps = ""
+        for step in step_list:
+            all_steps = all_steps + "\n" + step
+        instruction = await self.get_elaboration(message, step_list[step_ID - 1], all_steps)
         # print("MISTRAL RESPONSE:", instruction)
 
         return instruction
@@ -148,6 +237,44 @@ class BuilderAgent:
  
         # Start the generation process
         result, _ = await self._start_generation(prompt)
+        return result
+
+    async def generate_image_step(self, prompt, width=1024, height=1024):
+        """
+        Initiates an image generation request using the BFL API.
+        
+        Args:
+            prompt (str): The text prompt for image generation
+            width (int): Width of the image in pixels (default: 1024)
+            height (int): Height of the image in pixels (default: 1024)
+            
+        Returns:
+            dict: Response containing the generation ID or error message
+        """
+
+        # POST request to start image generation
+ 
+        # Start the generation process
+        result, _ = await self._start_generation(IMAGE_STEP_PROMPT + " << " + prompt + " >>")
+        return result
+
+    async def generate_image_elaborate(self, prompt, width=1024, height=1024):
+        """
+        Initiates an image generation request using the BFL API.
+        
+        Args:
+            prompt (str): The text prompt for image generation
+            width (int): Width of the image in pixels (default: 1024)
+            height (int): Height of the image in pixels (default: 1024)
+            
+        Returns:
+            dict: Response containing the generation ID or error message
+        """
+
+        # POST request to start image generation
+ 
+        # Start the generation process
+        result, _ = await self._start_generation(IMAGE_ELABORATION_PROMPT + " << " + prompt + " >>")
         return result
     
     async def check_image_status(self, generation_id):
