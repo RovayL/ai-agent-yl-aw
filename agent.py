@@ -141,6 +141,35 @@ The elaborated construction step to illustrate is enclosed between << and >>:
 """
 
 
+COST_ESTIMATION_PROMPT = """
+You are BuilderBot, a highly skilled maker and DIY expert with extensive knowledge of building and crafting various items. You have practical experience in woodworking, basic electronics, home improvement, and general crafting.
+
+Your task is to provide a detailed cost estimate for the materials needed in a DIY project or a specific step of a project. The step or materials list to estimate costs for will be enclosed between << and >>.
+
+Provide your cost estimate in this exact format:
+
+### Cost Estimate
+
+| Material | Quantity | Est. Cost (USD) | Where to Buy |
+|----------|----------|-----------------|-------------|
+| [Material name] | [Quantity] | [Price range] | [Store suggestions] |
+
+After the table, provide:
+
+#### Total Estimated Cost: $XX - $XX
+
+#### Cost-Saving Tips:
+- [2-3 practical tips for saving money on these materials]
+
+#### Alternative Materials:
+- [1-2 alternative materials that could be used instead, with their estimated costs]
+
+Be realistic and practical with your estimates. Use current average US prices. For the "Where to Buy" column, suggest common retailers where these items can be purchased (e.g., Home Depot, Lowe's, Amazon, craft stores, etc.).
+
+The materials or step to estimate costs for is enclosed between << and >>:
+"""
+
+
 class BuilderAgent:
     def __init__(self):
         MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
@@ -214,6 +243,51 @@ class BuilderAgent:
         # print("MISTRAL RESPONSE:", instruction)
 
         return instruction
+        
+    async def get_cost_estimate(self, message: discord.Message, step, all_steps):
+        """Generate a cost estimate for the materials in a specific step or all steps.
+        
+        Args:
+            message (discord.Message): The message that initiated the cost estimation
+            step (str): The specific step to estimate costs for
+            all_steps (str): All steps in the build for context
+            
+        Returns:
+            str: A detailed cost estimate for the materials
+        """
+        formatted_content = "<< " + step + " >> \n\n\n\n" + all_steps
+
+        response = await self.client.chat.complete_async(
+            model=MISTRAL_MODEL,
+            messages=[
+                {"role": "system", "content": COST_ESTIMATION_PROMPT},
+                {"role": "user", "content": formatted_content},
+            ]
+        )
+
+        return response.choices[0].message.content
+        
+    async def estimate_costs(self, message: discord.Message, step_ID: int, builds_ago: int, step_list: list):
+        """Estimate the costs for materials in a specific step.
+        
+        Args:
+            message (discord.Message): The message that initiated the cost estimation
+            step_ID (int): The ID of the step to estimate costs for
+            builds_ago (int): How many builds ago to look for the step
+            step_list (list): List of steps in the build
+            
+        Returns:
+            str: A detailed cost estimate for the materials in the step
+        """
+        await message.reply(f"Estimating costs for step {step_ID}, {builds_ago} build(s) ago...")
+
+        all_steps = ""
+        for step in step_list:
+            all_steps = all_steps + "\n" + step
+            
+        cost_estimate = await self.get_cost_estimate(message, step_list[step_ID - 1], all_steps)
+        
+        return cost_estimate
 
     async def _start_generation(self, prompt, width=1024, height=1024):
         print(f"Starting image generation with prompt: '{prompt}'")
