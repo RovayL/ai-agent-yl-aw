@@ -248,7 +248,7 @@ async def on_ready():
 
 message_history = {}
 head_index = 0
-MAX_HISTORY_LEN = 2
+MAX_HISTORY_LEN = 10
 
 #############################        CACHE SETUP        #############################
 
